@@ -1,6 +1,6 @@
 import sys
-# import os # Убран неиспользуемый импорт
-import shutil
+import os
+import shutil # Добавлен импорт shutil
 from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -18,7 +18,7 @@ from views.table_editor import TableEditorWidget
 class MainWindow(QMainWindow):
     """
     Главное окно приложения.
-    (Версия 7.1: Исправлена активация кнопки генерации)
+    (Версия 7: Добавлена генерация документов)
     """
     def __init__(self, parent=None):
         # ... (код __init__ без изменений) ...
@@ -42,33 +42,24 @@ class MainWindow(QMainWindow):
         self._update_ui_state()
 
 
+    # ... (методы _build_window_title, _update_window_title, _update_ui_state без изменений) ...
     def _build_window_title(self) -> str:
         base_title = "Генератор документов DOCX"; project_name = self.project.get_project_filename()
         modified_marker = "*" if self.project.is_modified else ""; return f"{project_name}{modified_marker} - {base_title}"
     @Slot()
     def _update_window_title(self): self.setWindowTitle(self._build_window_title())
-
-    # --- ИЗМЕНЕННЫЙ МЕТОД ---
     @Slot()
     def _update_ui_state(self):
-        """Обновляет состояние элементов UI."""
         project_active = bool(self.project.template_paths) or self.project.filepath is not None
-        can_save = self.project.is_modified
-        can_save_as = project_active
-
-        self.save_project_action.setEnabled(can_save)
-        self.save_project_as_action.setEnabled(can_save_as)
-        self.add_template_action.setEnabled(True) # Добавить шаблон можно всегда
-
-        # --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-        # Активируем генерацию, если есть шаблоны (путь проверим при нажатии)
-        self.generate_docs_action.setEnabled(bool(self.project.template_paths))
-        # -----------------------
-
+        can_save = self.project.is_modified; can_save_as = project_active
+        self.save_project_action.setEnabled(can_save); self.save_project_as_action.setEnabled(can_save_as)
+        self.add_template_action.setEnabled(True)
+        # Активируем генерацию, если есть шаблоны и путь вывода
+        self.generate_docs_action.setEnabled(bool(self.project.template_paths and self.project.output_path))
         self._update_window_title()
 
     def _create_menus(self):
-        # ... (код создания меню без изменений) ...
+        # ... (код создания меню "Файл", "Справка" без изменений) ...
         menu_bar = self.menuBar(); file_menu = menu_bar.addMenu("&Файл")
         new_project_action = QAction("&Новый проект", self); new_project_action.setShortcut(QKeySequence.StandardKey.New)
         new_project_action.triggered.connect(self._on_new_project); file_menu.addAction(new_project_action)
@@ -81,16 +72,25 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         exit_action = QAction("&Выход", self); exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         exit_action.triggered.connect(self.close); file_menu.addAction(exit_action)
+
+        # Меню "Проект" - подключаем генерацию
         project_menu = menu_bar.addMenu("&Проект")
-        self.add_template_action = QAction("Добавить &шаблон...", self); self.add_template_action.triggered.connect(self._on_add_template)
+        self.add_template_action = QAction("Добавить &шаблон...", self)
+        self.add_template_action.triggered.connect(self._on_add_template)
         project_menu.addAction(self.add_template_action)
-        self.generate_docs_action = QAction("&Сгенерировать документы...", self); self.generate_docs_action.triggered.connect(self._on_generate_docs)
+
+        self.generate_docs_action = QAction("&Сгенерировать документы...", self)
+        self.generate_docs_action.triggered.connect(self._on_generate_docs) # Связываем!
         project_menu.addAction(self.generate_docs_action)
+
         help_menu = menu_bar.addMenu("&Справка"); about_action = QAction("&О программе", self)
         # about_action.triggered.connect(self._on_about)
         help_menu.addAction(about_action)
 
-    # ... (остальные методы без изменений) ...
+    # ... (методы _check_unsaved_changes, _on_new_project, _on_open_project,
+    #      _on_save_project, _on_save_project_as, _on_add_template,
+    #      _update_keys_list_widget, _on_key_selected, _on_editor_data_changed,
+    #      closeEvent без изменений) ...
     def _check_unsaved_changes(self) -> bool:
         if not self.project.is_modified: return True
         pn = self.project.get_project_filename()
@@ -184,36 +184,87 @@ class MainWindow(QMainWindow):
         elif self.table_editor.isVisible():
             table_id = self.table_editor.get_current_table_id()
             if table_id: edited_data = self.table_editor.get_edited_data(); self.project.update_key_data(table_id, edited_data); self._update_ui_state(); print(f"Данные таблицы '{table_id}' обновлены.")
+
+
+    # --- Новый обработчик ---
     @Slot()
     def _on_generate_docs(self):
+        """Обработчик действия 'Сгенерировать документы...'."""
         print("Действие: Сгенерировать документы")
-        if not self.project.template_paths: QMessageBox.warning(self, "Нет шаблонов", "..."); return
+
+        # 1. Проверяем наличие шаблонов
+        if not self.project.template_paths:
+            QMessageBox.warning(self, "Нет шаблонов", "Добавьте хотя бы один шаблон в проект.")
+            return
+
+        # 2. Проверяем и запрашиваем путь вывода, если не задан
         if not self.project.output_path:
-            self.statusBar().showMessage("Выберите папку для сохранения ...")
-            dir_path_str = QFileDialog.getExistingDirectory(self, "Выберите папку для вывода", str(self.project.filepath.parent) if self.project.filepath else str(Path.home()))
+            self.statusBar().showMessage("Выберите папку для сохранения сгенерированных документов.")
+            dir_path_str = QFileDialog.getExistingDirectory(
+                self,
+                "Выберите папку для вывода",
+                str(self.project.filepath.parent) if self.project.filepath else str(Path.home())
+            )
             if dir_path_str:
-                if not self.project.set_output_path(dir_path_str): QMessageBox.critical(self, "Ошибка", f"... {dir_path_str}"); self.statusBar().showMessage("Ошибка ..."); return
-                self._update_ui_state()
-            else: self.statusBar().showMessage("Генерация отменена ..."); return
+                if not self.project.set_output_path(dir_path_str):
+                     QMessageBox.critical(self, "Ошибка", f"Не удалось установить папку вывода:\n{dir_path_str}")
+                     self.statusBar().showMessage("Ошибка установки папки вывода.")
+                     return
+                self._update_ui_state() # Обновляем активность кнопки генерации
+            else:
+                self.statusBar().showMessage("Генерация отменена (не выбрана папка вывода).")
+                return # Пользователь отменил выбор папки
+
+        # 3. Проверяем несохраненные изменения (опционально, но рекомендуется)
         if self.project.is_modified:
-             reply = QMessageBox.question(self, "Сохранить?", "...", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes)
+             reply = QMessageBox.question(self, "Сохранить?",
+                                          "В проекте есть несохраненные изменения. Рекомендуется сохранить их перед генерацией.\nСохранить сейчас?",
+                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                          QMessageBox.StandardButton.Yes)
              if reply == QMessageBox.StandardButton.Yes:
-                 if not self._on_save_project(): self.statusBar().showMessage("Генерация отменена ..."); return
-        output_dir = self.project.output_path; keys_data = self.project.get_all_keys_data()
-        success_count = 0; error_count = 0
-        self.statusBar().showMessage("Начало генерации..."); QApplication.processEvents()
+                 if not self._on_save_project():
+                     self.statusBar().showMessage("Генерация отменена (ошибка сохранения).")
+                     return # Выходим, если сохранение не удалось
+
+        # 4. Запускаем генерацию для каждого шаблона
+        output_dir = self.project.output_path
+        keys_data = self.project.get_all_keys_data()
+        success_count = 0
+        error_count = 0
+
+        self.statusBar().showMessage("Начало генерации документов...")
+        QApplication.processEvents() # Обновляем UI
+
         for template_path in self.project.template_paths:
-            output_filename = f"{template_path.stem}_gen{template_path.suffix}"; output_filepath = output_dir / output_filename
-            self.statusBar().showMessage(f"Генерация '{output_filename}'..."); QApplication.processEvents()
-            if self.docx_handler.generate_document(template_path, output_filepath, keys_data): success_count += 1
-            else: error_count += 1
+            # Формируем имя выходного файла (можно сделать настраиваемым)
+            # Пример: добавляем "_gen" к имени шаблона
+            output_filename = f"{template_path.stem}_gen{template_path.suffix}"
+            output_filepath = output_dir / output_filename
+
+            self.statusBar().showMessage(f"Генерация '{output_filename}'...")
+            QApplication.processEvents()
+
+            if self.docx_handler.generate_document(template_path, output_filepath, keys_data):
+                success_count += 1
+            else:
+                error_count += 1
+                # Прервать генерацию при первой ошибке или продолжить? Пока продолжаем.
+
+        # 5. Сообщаем результат
         final_message = f"Генерация завершена. Успешно: {success_count}"
-        if error_count > 0: final_message += f", Ошибки: {error_count}"; QMessageBox.warning(self, "...", final_message + "\n...")
-        else: QMessageBox.information(self, "Генерация завершена", final_message)
+        if error_count > 0:
+            final_message += f", Ошибки: {error_count}"
+            QMessageBox.warning(self, "Генерация завершена с ошибками", final_message + "\nСмотрите консоль для деталей.")
+        else:
+            QMessageBox.information(self, "Генерация завершена", final_message)
+
         self.statusBar().showMessage(final_message)
+
+
     def closeEvent(self, event: QCloseEvent):
         if self._check_unsaved_changes(): event.accept()
         else: event.ignore()
+
     # def _on_about(self): print("Действие: О программе")
 
 if __name__ == '__main__':

@@ -1,12 +1,12 @@
 import json
 import os
 from pathlib import Path
-import copy # Импортируем copy для сравнения списков
+import copy
 
 class Project:
     """
     Класс для хранения и управления данными проекта.
-    (Версия 4: Корректное обновление табличных данных в update_key_data)
+    (Версия 5: add_found_table принимает template_keys)
     """
     def __init__(self):
         self.filepath: Path | None = None
@@ -15,8 +15,7 @@ class Project:
         self.keys_data: dict = {} # { key_id: { data_dict } }
         self.is_modified: bool = False
 
-    # ... (методы reset, add_template, remove_template, set_output_path,
-    #      add_found_key, add_found_table без изменений) ...
+    # ... (reset, add_template, remove_template, set_output_path, add_found_key без изменений) ...
     def reset(self):
         self.__init__()
 
@@ -69,62 +68,56 @@ class Project:
             self.is_modified = True
             print(f"Добавлен новый ключ: {key_name}")
 
-    def add_found_table(self, table_id: str):
+
+    # --- Обновленный метод ---
+    def add_found_table(self, table_id: str, template_keys: list[str] | None = None):
+        """
+        Добавляет найденный ID динамической таблицы в keys_data, если его еще нет,
+        сохраняя связанные template_keys.
+        """
         if table_id not in self.keys_data:
             self.keys_data[table_id] = {
                 'type': 'dynamic_table',
-                'columns': [],
-                'template_keys': [],
+                'columns': [], # Заголовки столбцов (можно будет заполнить позже)
+                'template_keys': template_keys if template_keys else [], # Сохраняем ключи!
                 'data': []
             }
             self.is_modified = True
-            print(f"Добавлена новая динамическая таблица: {table_id}")
+            print(f"Добавлена новая таблица: {table_id} с template_keys: {template_keys}")
+        # else: # Если таблица уже есть, может быть, обновить template_keys?
+            # current_keys = self.keys_data[table_id].get('template_keys', [])
+            # if template_keys and current_keys != template_keys:
+            #     print(f"Предупреждение: Обновление template_keys для таблицы {table_id}")
+            #     self.keys_data[table_id]['template_keys'] = template_keys
+            #     self.is_modified = True
+            # pass # Решаем, нужно ли обновлять ключи, если таблица уже существует
 
-
-    # --- Обновленный метод ---
+    # ... (update_key_data, get_key_data, get_all_keys_data, set_keys_data,
+    #      get_project_filename, save, load без изменений) ...
     def update_key_data(self, key_id: str, data: dict):
-        """
-        Обновляет данные для указанного ключа или ID таблицы.
-        Ожидает полный словарь данных для key_id.
-        Корректно обрабатывает изменения в данных таблиц.
-        """
         if key_id not in self.keys_data:
-            # Если ключа/таблицы нет, просто добавляем
             self.keys_data[key_id] = data
             self.is_modified = True
             print(f"Элемент '{key_id}' добавлен с новыми данными.")
             return
-
         old_data = self.keys_data[key_id]
         data_changed = False
-
-        # Сравниваем поля в зависимости от типа элемента
         if old_data.get('type') == 'dynamic_table':
-            # Для таблиц сравниваем список 'data'
             old_table_rows = old_data.get('data', [])
             new_table_rows = data.get('data', [])
-            # Простое сравнение списков словарей должно работать
             if old_table_rows != new_table_rows:
-                old_data['data'] = copy.deepcopy(new_table_rows) # Сохраняем глубокую копию
+                old_data['data'] = copy.deepcopy(new_table_rows)
                 data_changed = True
-            # Можно добавить сравнение других полей таблицы, если они появятся
-            # if old_data.get('columns') != data.get('columns'): ...
-
         else:
-            # Для простых ключей сравниваем 'value' и 'is_frozen'
             if (old_data.get('value') != data.get('value') or
                     old_data.get('is_frozen') != data.get('is_frozen')):
                 old_data['value'] = data.get('value', '')
                 old_data['status'] = data.get('status', 'unknown')
                 old_data['is_frozen'] = data.get('is_frozen', False)
                 data_changed = True
-
         if data_changed:
             self.is_modified = True
             print(f"Данные элемента '{key_id}' обновлены в модели.")
-        # else:
-            # print(f"Данные элемента '{key_id}' не изменились.")
-
 
     def get_key_data(self, key_id: str) -> dict | None:
         return self.keys_data.get(key_id)
@@ -139,7 +132,6 @@ class Project:
         if self.filepath: return self.filepath.name
         return "Безымянный"
 
-    # ... (методы save, load без изменений) ...
     def save(self, path_str: str | None = None) -> bool:
         save_path = Path(path_str) if path_str else self.filepath
         if not save_path: print("Ошибка сохранения: Путь не указан."); return False

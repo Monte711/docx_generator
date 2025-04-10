@@ -1,0 +1,153 @@
+{
+    "version": "1.0",
+    "template_paths": [
+        "D:\\scan1\\docx_dormatter\\ТП++.docx"
+    ],
+    "output_path": "D:\\scan1\\docx_dormatter\\generated_docs",
+    "keys_data": {
+        "{{ACTCAT_DATE}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{ACTCLASS_DATE}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{COMMUNICATION_PICTURE}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{SZI_NSD}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{PITANIE_ZAZEMLENIE_PICTURE}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{ACTCLASS_NUMB}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{FLOOR_NUMBER}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{HW_KZ}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{HW_NAME}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{HW_Serial}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{ADDRESS}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{OS}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{HW_PLACE}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{DYNAMIC_TABLE::SPSIDocs}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{ORG_NAME}}": {
+            "value": "ООО \"БД Безопасность\"",
+            "status": "filled",
+            "is_frozen": false
+        },
+        "{{SIGNATORY_NAME}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{SYSTEM_NAME}}": {
+            "value": "АРМ РСП ОО моб.№21",
+            "status": "filled",
+            "is_frozen": false
+        },
+        "{{BUILDING_FLOORS}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{SZI}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{ACTCAT_NUMB}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{ROOM_NUMBER}}": {
+            "value": "Кабинет 201",
+            "status": "filled",
+            "is_frozen": false
+        },
+        "{{ADD_CAB}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "{{OTSS_PICTURE}}": {
+            "value": "",
+            "status": "empty",
+            "is_frozen": false
+        },
+        "HardwareList": {
+            "type": "dynamic_table",
+            "columns": [],
+            "template_keys": [
+                "{{HW_NAME}}",
+                "{{HW_Serial}}",
+                "{{HW_KZ}}",
+                "{{HW_PLACE}}"
+            ],
+            "data": []
+        },
+        "SZIList": {
+            "type": "dynamic_table",
+            "columns": [],
+            "template_keys": [],
+            "data": []
+        },
+        "SoftwareList": {
+            "type": "dynamic_table",
+            "columns": [],
+            "template_keys": [],
+            "data": []
+        },
+        "SPSIList": {
+            "type": "dynamic_table",
+            "columns": [],
+            "template_keys": [],
+            "data": []
+        }
+    }
+}
